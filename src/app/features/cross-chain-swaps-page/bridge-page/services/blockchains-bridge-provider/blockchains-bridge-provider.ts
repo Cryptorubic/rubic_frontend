@@ -8,6 +8,8 @@ import { TransactionReceipt } from 'web3-eth';
 import { BRIDGE_PROVIDER_TYPE } from '../../models/ProviderType';
 
 export abstract class BlockchainsBridgeProvider {
+  public abstract get tokens(): Observable<List<BridgeToken>>;
+
   /**
    * @description get type of provider
    */

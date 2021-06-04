@@ -37,9 +37,8 @@ export class Web3Public {
    * @param blockchain platform of the token
    * @return object, with written token fields, or a error, if there's no such token
    */
-  public getTokenInfo: (
-    tokenAddress: string
-  ) => Promise<Token> = this.getTokenInfoCachingDecorator();
+  public getTokenInfo: (tokenAddress: string) => Promise<Token> =
+    this.getTokenInfoCachingDecorator();
 
   /**
    * @description gets account balance in Eth units
@@ -302,6 +301,21 @@ export class Web3Public {
     }
 
     return tokensBalances;
+  }
+
+  public async multicallContractMethod(
+    contractAddress: string,
+    contractAbi: any[],
+    methodName: string,
+    methodCallsArguments: any[][]
+  ) {
+    const contract = new this.web3.eth.Contract(contractAbi, contractAddress);
+    const calls: Call[] = methodCallsArguments.map(callArguments => ({
+      callData: contract.methods[methodName](...callArguments).encodeABI(),
+      target: contractAddress
+    }));
+
+    return this.multicall(calls);
   }
 
   private async multicall(calls: Call[]): Promise<string[]> {

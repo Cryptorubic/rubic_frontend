@@ -31,6 +31,9 @@ import { BlockchainsBridgeProvider } from './blockchains-bridge-provider/blockch
 import { BridgeToken } from '../models/BridgeToken';
 import { EthereumXdaiBridgeProviderService } from './blockchains-bridge-provider/ethereum-xdai-bridge-provider/ethereum-xdai-bridge-provider.service';
 import { BRIDGE_PROVIDER_TYPE } from '../models/ProviderType';
+import { BinancePolygonBridgeProviderService } from './blockchains-bridge-provider/binance-polygon-bridge-provider/binance-polygon-bridge-provider.service';
+import { bridgeProvidersData } from './bridge-providers-list';
+import { BlockchainsPairs } from './models/BridgeProviderData';
 
 @Injectable()
 export class BridgeService implements OnDestroy {
@@ -48,17 +51,7 @@ export class BridgeService implements OnDestroy {
 
   private _swapTokensSubscription$: Subscription;
 
-  private _blockchainTokens = {
-    [BLOCKCHAIN_NAME.ETHEREUM]: {
-      [BLOCKCHAIN_NAME.BINANCE_SMART_CHAIN]: List([]),
-      [BLOCKCHAIN_NAME.POLYGON]: List([]),
-      [BLOCKCHAIN_NAME.TRON]: List([]),
-      [BLOCKCHAIN_NAME.XDAI]: List([])
-    },
-    [BLOCKCHAIN_NAME.BINANCE_SMART_CHAIN]: {
-      [BLOCKCHAIN_NAME.TRON]: List([])
-    }
-  };
+  private _blockchainPairs: BlockchainsPairs;
 
   private _transactions: BehaviorSubject<List<BridgeTableTrade>> = new BehaviorSubject(null);
 
@@ -85,6 +78,7 @@ export class BridgeService implements OnDestroy {
     private ethereumTronBridgeProviderService: EthereumTronBridgeProviderService,
     private binanceTronBridgeProviderService: BinanceTronBridgeProviderService,
     private ethereumXdaiBridgeProviderService: EthereumXdaiBridgeProviderService,
+    private binancePolygonBridgeProvider: BinancePolygonBridgeProviderService,
     private tokensService: TokensService,
     private web3PrivateService: Web3PrivateService,
     private web3PublicService: Web3PublicService,
@@ -92,6 +86,8 @@ export class BridgeService implements OnDestroy {
     private useTestingModeService: UseTestingModeService,
     private readonly translateService: TranslateService
   ) {
+    this.setupBlockchainPairs();
+
     this._swapTokensSubscription$ = this.tokensService.tokens.subscribe(swapTokens => {
       this._swapTokens = swapTokens;
       this.updateTransactionsList();
@@ -118,39 +114,10 @@ export class BridgeService implements OnDestroy {
     this._useTestingModeSubscription$.unsubscribe();
   }
 
-  public async setBlockchains(
-    fromBlockchain: BLOCKCHAIN_NAME,
-    toBlockchain: BLOCKCHAIN_NAME
-  ): Promise<void> {
+  public setBlockchains(fromBlockchain: BLOCKCHAIN_NAME, toBlockchain: BLOCKCHAIN_NAME): void {
     this._tokens.next(List([]));
-
-    if (fromBlockchain === BLOCKCHAIN_NAME.ETHEREUM || toBlockchain === BLOCKCHAIN_NAME.ETHEREUM) {
-      const nonEthereumBlockchain =
-        fromBlockchain !== BLOCKCHAIN_NAME.ETHEREUM ? fromBlockchain : toBlockchain;
-      this.selectedBlockchains = [BLOCKCHAIN_NAME.ETHEREUM, nonEthereumBlockchain];
-
-      switch (nonEthereumBlockchain) {
-        case BLOCKCHAIN_NAME.BINANCE_SMART_CHAIN:
-          this.bridgeProvider = this.ethereumBinanceBridgeProviderService;
-          break;
-        case BLOCKCHAIN_NAME.POLYGON:
-          this.bridgeProvider = this.ethereumPolygonBridgeProviderService;
-          break;
-        case BLOCKCHAIN_NAME.XDAI:
-          this.bridgeProvider = this.ethereumXdaiBridgeProviderService;
-          break;
-        default:
-          this.bridgeProvider = this.ethereumTronBridgeProviderService;
-      }
-    } else {
-      this.selectedBlockchains = [
-        BLOCKCHAIN_NAME.BINANCE_SMART_CHAIN,
-        fromBlockchain !== BLOCKCHAIN_NAME.BINANCE_SMART_CHAIN ? fromBlockchain : toBlockchain
-      ];
-
-      this.bridgeProvider = this.binanceTronBridgeProviderService;
-    }
-
+    this.bridgeProvider = this._blockchainPairs[fromBlockchain][toBlockchain].provider;
+    this.selectedBlockchains = [fromBlockchain, toBlockchain];
     this.setTokens();
   }
 
@@ -166,8 +133,8 @@ export class BridgeService implements OnDestroy {
       this._tokens.next(bridgeTestTokens[secondBlockchain]);
       return;
     }
-    if (this._blockchainTokens[firstBlockchain][secondBlockchain]?.size) {
-      this._tokens.next(this._blockchainTokens[firstBlockchain][secondBlockchain]);
+    if (this._blockchainPairs[firstBlockchain][secondBlockchain]?.tokens.size) {
+      this._tokens.next(this._blockchainPairs[firstBlockchain][secondBlockchain].tokens);
       return;
     }
 
@@ -175,13 +142,13 @@ export class BridgeService implements OnDestroy {
       .getTokensList(this._swapTokens)
       .pipe(first())
       .subscribe(tokensList => {
-        this._blockchainTokens[firstBlockchain][secondBlockchain] =
+        this._blockchainPairs[firstBlockchain][secondBlockchain].tokens =
           this.getTokensWithImagesAndRanks(tokensList);
         if (
           this.selectedBlockchains[0] === firstBlockchain &&
           this.selectedBlockchains[1] === secondBlockchain
         ) {
-          this._tokens.next(this._blockchainTokens[firstBlockchain][secondBlockchain]);
+          this._tokens.next(this._blockchainPairs[firstBlockchain][secondBlockchain].tokens);
         }
       });
   }
@@ -375,5 +342,23 @@ export class BridgeService implements OnDestroy {
 
       this._transactions.next(List(transactions));
     }
+  }
+
+  private setupBlockchainPairs(): void {
+    Object.entries(bridgeProvidersData).forEach(([fromBlockchainKey, fromBlockchainValue]) => {
+      this._blockchainPairs[fromBlockchainKey] = {};
+      Object.values(fromBlockchainValue).forEach(([toBlockchainKey, toBlockchainValue]) => {
+        this._blockchainPairs[fromBlockchainKey][toBlockchainKey] = {
+          tokens: new BehaviorSubject(List([])),
+          provider: this.getProviderInstanceByClass(toBlockchainValue)
+        };
+      });
+    });
+  }
+
+  private getProviderInstanceByClass(ProviderClass: {
+    new (): BlockchainsBridgeProvider;
+  }): BlockchainsBridgeProvider {
+    return Object.values(this).find(instance => instance instanceof ProviderClass);
   }
 }
