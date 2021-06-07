@@ -308,14 +308,20 @@ export class Web3Public {
     contractAbi: any[],
     methodName: string,
     methodCallsArguments: any[][]
-  ) {
+  ): Promise<any[]> {
     const contract = new this.web3.eth.Contract(contractAbi, contractAddress);
     const calls: Call[] = methodCallsArguments.map(callArguments => ({
       callData: contract.methods[methodName](...callArguments).encodeABI(),
       target: contractAddress
     }));
 
-    return this.multicall(calls);
+    const outputs = await this.multicall(calls);
+
+    const methodOutputAbi = contractAbi.find(
+      funcSignature => funcSignature.name === methodName
+    ).outputs;
+
+    return outputs.map(outputHex => this.web3.eth.abi.decodeParameters(methodOutputAbi, outputHex));
   }
 
   private async multicall(calls: Call[]): Promise<string[]> {

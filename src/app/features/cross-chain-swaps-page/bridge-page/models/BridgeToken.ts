@@ -11,7 +11,7 @@ interface BlockchainToken {
 }
 
 export type BlockchainsTokens = {
-  [blockchain in BLOCKCHAIN_NAME]: BlockchainToken;
+  [blockchain in BLOCKCHAIN_NAME]?: BlockchainToken;
 };
 
 export interface BridgeToken {
