@@ -179,13 +179,20 @@ export class BridgeFormComponent implements OnInit, OnDestroy {
   }
 
   set fromBlockchain(blockchain) {
-    if (blockchain === this._toBlockchain) {
+    if (blockchain.key === this._toBlockchain.key) {
       this.revertBlockchains();
     } else {
-      this._fromBlockchain = blockchain;
-      if (!this.isBlockchainsPairValid()) {
-        this._toBlockchain = BLOCKCHAINS[BLOCKCHAIN_NAME.ETHEREUM];
+      const { correctness, correctPair } = this.bridgeService.checkPairCorrectness(
+        blockchain.key,
+        this.toBlockchain.key
+      );
+
+      if (!correctness) {
+        [this._fromBlockchain, this._toBlockchain] = correctPair.map(name => BLOCKCHAINS[name]);
+      } else {
+        this._fromBlockchain = blockchain;
       }
+
       if (this.selectedToken) {
         this.selectedToken = null;
       }

@@ -18,6 +18,7 @@ import { BlockchainsBridgeProvider } from '../../blockchains-bridge-provider';
 export class EthereumBinancePanamaBridgeProviderService extends BlockchainsBridgeProvider {
   constructor(private panamaBridgeProvider: PanamaBridgeProviderService) {
     super();
+    this.loadTokens().subscribe(tokens => this._tokens.next(tokens));
   }
 
   private static parsePanamaToken(token: PanamaToken): BridgeToken {
@@ -52,10 +53,10 @@ export class EthereumBinancePanamaBridgeProviderService extends BlockchainsBridg
     };
   }
 
-  public getTokensList(): Observable<List<BridgeToken>> {
-    return this.panamaBridgeProvider
-      .getTokensList()
-      .pipe(map(tokens => tokens.map(EthereumBinancePanamaBridgeProviderService.parsePanamaToken)));
+  public loadTokens(): Observable<List<BridgeToken>> {
+    return this.panamaBridgeProvider.tokens.pipe(
+      map(tokens => tokens.map(EthereumBinancePanamaBridgeProviderService.parsePanamaToken))
+    );
   }
 
   public getFee(token: BridgeToken, toBlockchain: BLOCKCHAIN_NAME): Observable<number> {

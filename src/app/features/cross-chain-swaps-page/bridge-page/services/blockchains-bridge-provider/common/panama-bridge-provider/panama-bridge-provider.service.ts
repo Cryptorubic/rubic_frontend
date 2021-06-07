@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { List } from 'immutable';
 import { HttpClient } from '@angular/common/http';
-import { from, Observable, of, throwError } from 'rxjs';
+import { BehaviorSubject, from, Observable, of, throwError } from 'rxjs';
 import { catchError, map, mergeMap } from 'rxjs/operators';
 import { TranslateService } from '@ngx-translate/core';
 import { Web3PrivateService } from 'src/app/core/services/blockchain/web3-private-service/web3-private.service';
@@ -25,14 +25,22 @@ export class PanamaBridgeProviderService {
 
   private readonly PANAMA_SUCCESS_CODE = 20000;
 
+  private _tokens = new BehaviorSubject<List<PanamaToken>>(List([]));
+
+  get tokens(): Observable<List<PanamaToken>> {
+    return this._tokens.asObservable();
+  }
+
   constructor(
     private httpClient: HttpClient,
     private web3PrivateService: Web3PrivateService,
     private bridgeApiService: BridgeApiService,
     private readonly translateService: TranslateService
-  ) {}
+  ) {
+    this.loadTokens().subscribe(tokens => this._tokens.next(tokens));
+  }
 
-  public getTokensList(): Observable<List<PanamaToken>> {
+  private loadTokens(): Observable<List<PanamaToken>> {
     return this.httpClient.get(`${this.apiUrl}tokens`).pipe(
       map((response: PanamaResponse) => {
         if (response.code !== this.PANAMA_SUCCESS_CODE) {

@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { List } from 'immutable';
 import { map } from 'rxjs/operators';
 import { BLOCKCHAIN_NAME } from 'src/app/shared/models/blockchain/BLOCKCHAIN_NAME';
 import {
@@ -9,6 +8,7 @@ import {
 } from 'src/app/features/cross-chain-swaps-page/bridge-page/models/BridgeToken';
 import { BridgeTrade } from 'src/app/features/cross-chain-swaps-page/bridge-page/models/BridgeTrade';
 import { TransactionReceipt } from 'web3-eth';
+import { List } from 'immutable';
 import { BlockchainsBridgeProvider } from '../blockchains-bridge-provider';
 import { PanamaBridgeProviderService } from '../common/panama-bridge-provider/panama-bridge-provider.service';
 import { PanamaToken } from '../common/panama-bridge-provider/models/PanamaToken';
@@ -18,6 +18,7 @@ import { BRIDGE_PROVIDER_TYPE } from '../../../models/ProviderType';
 export class EthereumTronBridgeProviderService extends BlockchainsBridgeProvider {
   constructor(private commonPanamaBridgeProviderService: PanamaBridgeProviderService) {
     super();
+    this.loadTokens().subscribe(tokens => this._tokens.next(tokens));
   }
 
   private static parseUSDTPanamaToken(token: PanamaToken): BridgeToken {
@@ -49,18 +50,18 @@ export class EthereumTronBridgeProviderService extends BlockchainsBridgeProvider
     };
   }
 
-  getProviderType(): BRIDGE_PROVIDER_TYPE {
-    return BRIDGE_PROVIDER_TYPE.PANAMA;
-  }
-
-  getTokensList(): Observable<List<BridgeToken>> {
-    return this.commonPanamaBridgeProviderService.getTokensList().pipe(
+  private loadTokens(): Observable<List<BridgeToken>> {
+    return this.commonPanamaBridgeProviderService.tokens.pipe(
       map(tokens => {
         return tokens
           .filter(token => token.symbol === 'USDT')
           .map(EthereumTronBridgeProviderService.parseUSDTPanamaToken);
       })
     );
+  }
+
+  getProviderType(): BRIDGE_PROVIDER_TYPE {
+    return BRIDGE_PROVIDER_TYPE.PANAMA;
   }
 
   getFee(token: BridgeToken, toBlockchain: BLOCKCHAIN_NAME): Observable<number> {

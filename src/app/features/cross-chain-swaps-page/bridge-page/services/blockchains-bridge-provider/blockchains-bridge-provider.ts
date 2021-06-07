@@ -1,26 +1,25 @@
 import { List } from 'immutable';
-import { Observable } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
 import { BridgeTrade } from 'src/app/features/cross-chain-swaps-page/bridge-page/models/BridgeTrade';
 import { BridgeToken } from 'src/app/features/cross-chain-swaps-page/bridge-page/models/BridgeToken';
-import SwapToken from 'src/app/shared/models/tokens/SwapToken';
 import { BLOCKCHAIN_NAME } from 'src/app/shared/models/blockchain/BLOCKCHAIN_NAME';
 import { TransactionReceipt } from 'web3-eth';
 import { BRIDGE_PROVIDER_TYPE } from '../../models/ProviderType';
 
 export abstract class BlockchainsBridgeProvider {
-  public abstract get tokens(): Observable<List<BridgeToken>>;
+  protected _tokens = new BehaviorSubject<List<BridgeToken>>(List([]));
+
+  /**
+   * get list of bridge tokens
+   */
+  public get tokens(): Observable<List<BridgeToken>> {
+    return this._tokens.asObservable();
+  }
 
   /**
    * @description get type of provider
    */
   public getProviderType?(token?: BridgeToken): BRIDGE_PROVIDER_TYPE;
-
-  /**
-   * @description get transformed list of bridge tokens from usually tokens
-   * @param swapTokens swap list tokens
-   * @return observable bridge list tokens
-   */
-  public abstract getTokensList(swapTokens: List<SwapToken>): Observable<List<BridgeToken>>;
 
   /**
    * @description get price blockchain provider's fee

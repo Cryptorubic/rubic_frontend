@@ -1,7 +1,7 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { BehaviorSubject, defer, Observable, Subscription, throwError } from 'rxjs';
 import { List } from 'immutable';
-import { catchError, first, mergeMap, tap } from 'rxjs/operators';
+import { catchError, map, mergeMap, tap } from 'rxjs/operators';
 import BigNumber from 'bignumber.js';
 import { TranslateService } from '@ngx-translate/core';
 import { BLOCKCHAIN_NAME } from 'src/app/shared/models/blockchain/BLOCKCHAIN_NAME';
@@ -33,7 +33,7 @@ import { EthereumXdaiBridgeProviderService } from './blockchains-bridge-provider
 import { BRIDGE_PROVIDER_TYPE } from '../models/ProviderType';
 import { BinancePolygonBridgeProviderService } from './blockchains-bridge-provider/binance-polygon-bridge-provider/binance-polygon-bridge-provider.service';
 import { bridgeProvidersData } from './bridge-providers-list';
-import { BlockchainsPairs } from './models/BridgeProviderData';
+import { BlockchainsProviders } from './models/BridgeProviderData';
 
 @Injectable()
 export class BridgeService implements OnDestroy {
@@ -51,7 +51,7 @@ export class BridgeService implements OnDestroy {
 
   private _swapTokensSubscription$: Subscription;
 
-  private _blockchainPairs: BlockchainsPairs;
+  private _blockchainProviders: BlockchainsProviders = {};
 
   private _transactions: BehaviorSubject<List<BridgeTableTrade>> = new BehaviorSubject(null);
 
@@ -115,8 +115,13 @@ export class BridgeService implements OnDestroy {
   }
 
   public setBlockchains(fromBlockchain: BLOCKCHAIN_NAME, toBlockchain: BLOCKCHAIN_NAME): void {
+    if (!this.checkPairCorrectness(fromBlockchain, toBlockchain).correctness) {
+      console.error('Such bridge not exists. You should check it before call method');
+      return;
+    }
+
     this._tokens.next(List([]));
-    this.bridgeProvider = this._blockchainPairs[fromBlockchain][toBlockchain].provider;
+    this.bridgeProvider = this._blockchainProviders[fromBlockchain][toBlockchain];
     this.selectedBlockchains = [fromBlockchain, toBlockchain];
     this.setTokens();
   }
@@ -133,27 +138,18 @@ export class BridgeService implements OnDestroy {
       this._tokens.next(bridgeTestTokens[secondBlockchain]);
       return;
     }
-    if (this._blockchainPairs[firstBlockchain][secondBlockchain]?.tokens.size) {
-      this._tokens.next(this._blockchainPairs[firstBlockchain][secondBlockchain].tokens);
-      return;
-    }
 
-    this.bridgeProvider
-      .getTokensList(this._swapTokens)
-      .pipe(first())
-      .subscribe(tokensList => {
-        this._blockchainPairs[firstBlockchain][secondBlockchain].tokens =
-          this.getTokensWithImagesAndRanks(tokensList);
-        if (
-          this.selectedBlockchains[0] === firstBlockchain &&
-          this.selectedBlockchains[1] === secondBlockchain
-        ) {
-          this._tokens.next(this._blockchainPairs[firstBlockchain][secondBlockchain].tokens);
-        }
-      });
+    this.bridgeProvider.tokens.pipe(map(this.getTokensWithImagesAndRanks)).subscribe(tokens => {
+      if (
+        this.selectedBlockchains[0] === firstBlockchain &&
+        this.selectedBlockchains[1] === secondBlockchain
+      ) {
+        this._tokens.next(tokens);
+      }
+    });
   }
 
-  private getTokensWithImagesAndRanks(tokens: List<BridgeToken>): List<BridgeToken> {
+  private getTokensWithImagesAndRanks = (tokens: List<BridgeToken>): List<BridgeToken> => {
     return tokens.map(token => {
       const ethToken = this._swapTokens
         .filter(item => item.image)
@@ -166,7 +162,7 @@ export class BridgeService implements OnDestroy {
       token.rank = ethToken?.rank;
       return token;
     });
-  }
+  };
 
   public getFee(token: BridgeToken, toBlockchain: BLOCKCHAIN_NAME): Observable<number> {
     return this.bridgeProvider.getFee(token, toBlockchain);
@@ -346,13 +342,12 @@ export class BridgeService implements OnDestroy {
 
   private setupBlockchainPairs(): void {
     Object.entries(bridgeProvidersData).forEach(([fromBlockchainKey, fromBlockchainValue]) => {
-      this._blockchainPairs[fromBlockchainKey] = {};
-      Object.values(fromBlockchainValue).forEach(([toBlockchainKey, toBlockchainValue]) => {
-        this._blockchainPairs[fromBlockchainKey][toBlockchainKey] = {
-          tokens: new BehaviorSubject(List([])),
-          provider: this.getProviderInstanceByClass(toBlockchainValue)
-        };
-      });
+      this._blockchainProviders[fromBlockchainKey] = {};
+      Object.entries(fromBlockchainValue).forEach(
+        ([toBlockchainKey, toBlockchainValue]) =>
+          (this._blockchainProviders[fromBlockchainKey][toBlockchainKey] =
+            this.getProviderInstanceByClass(toBlockchainValue))
+      );
     });
   }
 
@@ -360,5 +355,44 @@ export class BridgeService implements OnDestroy {
     new (): BlockchainsBridgeProvider;
   }): BlockchainsBridgeProvider {
     return Object.values(this).find(instance => instance instanceof ProviderClass);
+  }
+
+  public checkPairCorrectness(
+    fromBlockchain: BLOCKCHAIN_NAME,
+    toBlockchain: BLOCKCHAIN_NAME
+  ): {
+    correctness: boolean;
+    correctPair: BLOCKCHAIN_NAME[];
+  } {
+    if (!this._blockchainProviders[fromBlockchain]) {
+      return {
+        correctness: false,
+        correctPair: [BLOCKCHAIN_NAME.ETHEREUM, BLOCKCHAIN_NAME.BINANCE_SMART_CHAIN]
+      };
+    }
+
+    if (!this._blockchainProviders[fromBlockchain][toBlockchain]) {
+      return {
+        correctness: false,
+        correctPair: [
+          fromBlockchain,
+          BLOCKCHAIN_NAME[
+            this.getKeyByValue(
+              BLOCKCHAIN_NAME,
+              Object.keys(this._blockchainProviders[fromBlockchain])[0]
+            )
+          ]
+        ]
+      };
+    }
+
+    return {
+      correctness: true,
+      correctPair: [fromBlockchain, toBlockchain]
+    };
+  }
+
+  private getKeyByValue(object, value) {
+    return Object.keys(object).find(key => object[key] === value);
   }
 }

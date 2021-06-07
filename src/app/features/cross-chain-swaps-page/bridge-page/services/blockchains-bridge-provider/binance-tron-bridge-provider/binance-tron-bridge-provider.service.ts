@@ -18,6 +18,7 @@ import { BRIDGE_PROVIDER_TYPE } from '../../../models/ProviderType';
 export class BinanceTronBridgeProviderService extends BlockchainsBridgeProvider {
   constructor(private commonPanamaBridgeProviderService: PanamaBridgeProviderService) {
     super();
+    this.loadTokens().subscribe(tokens => this._tokens.next(tokens));
   }
 
   get providerType(): BRIDGE_PROVIDER_TYPE {
@@ -53,8 +54,8 @@ export class BinanceTronBridgeProviderService extends BlockchainsBridgeProvider 
     };
   }
 
-  getTokensList(): Observable<List<BridgeToken>> {
-    return this.commonPanamaBridgeProviderService.getTokensList().pipe(
+  loadTokens(): Observable<List<BridgeToken>> {
+    return this.commonPanamaBridgeProviderService.tokens.pipe(
       map(tokens => {
         return tokens
           .filter(token => token.symbol === 'USDT')

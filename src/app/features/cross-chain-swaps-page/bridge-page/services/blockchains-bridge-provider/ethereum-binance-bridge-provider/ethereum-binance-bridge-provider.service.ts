@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { forkJoin, Observable } from 'rxjs';
+import { combineLatest, Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { List } from 'immutable';
 import { BLOCKCHAIN_NAME } from 'src/app/shared/models/blockchain/BLOCKCHAIN_NAME';
@@ -22,15 +22,14 @@ export class EthereumBinanceBridgeProviderService extends BlockchainsBridgeProvi
     private rubicBridgeProvider: EthereumBinanceRubicBridgeProviderService
   ) {
     super();
+    this.loadTokens().subscribe(tokens => this._tokens.next(tokens));
   }
 
-  public getTokensList(): Observable<List<BridgeToken>> {
-    const panamaTokensObservable = this.panamaBridgeProvider.getTokensList();
-    const rubicTokenObservable = this.rubicBridgeProvider.getTokensList();
-    return forkJoin([rubicTokenObservable, panamaTokensObservable]).pipe(
-      map(([rubicToken, panamaTokens]) => {
-        return rubicToken.concat(panamaTokens);
-      })
+  public loadTokens(): Observable<List<BridgeToken>> {
+    const panamaTokensObservable = this.panamaBridgeProvider.tokens;
+    const rubicTokenObservable = this.rubicBridgeProvider.tokens;
+    return combineLatest([rubicTokenObservable, panamaTokensObservable]).pipe(
+      map(([rubicToken, panamaTokens]) => rubicToken.concat(panamaTokens))
     );
   }
 

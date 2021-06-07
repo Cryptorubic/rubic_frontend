@@ -4,7 +4,7 @@ import { defer, Observable, of } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { MaticPOSClient } from '@maticnetwork/maticjs';
 import BigNumber from 'bignumber.js';
-import { switchMap, tap } from 'rxjs/operators';
+import { map, switchMap, tap } from 'rxjs/operators';
 import { Web3Public } from 'src/app/core/services/blockchain/web3-public-service/Web3Public';
 import { Web3PublicService } from 'src/app/core/services/blockchain/web3-public-service/web3-public.service';
 import { Web3PrivateService } from 'src/app/core/services/blockchain/web3-private-service/web3-private.service';
@@ -24,6 +24,7 @@ import { BridgeTrade } from 'src/app/features/cross-chain-swaps-page/bridge-page
 import { TransactionReceipt } from 'web3-eth';
 import { BlockchainsBridgeProvider } from '../blockchains-bridge-provider';
 import { BRIDGE_PROVIDER_TYPE } from '../../../models/ProviderType';
+import { TokensService } from '../../../../../../core/services/backend/tokens-service/tokens.service';
 
 interface PolygonGraphToken {
   rootToken: string;
@@ -63,7 +64,8 @@ export class EthereumPolygonBridgeProviderService extends BlockchainsBridgeProvi
     private web3PrivateService: Web3PrivateService,
     private bridgeApiService: BridgeApiService,
     private useTestingModeService: UseTestingModeService,
-    private metamaskProviderService: MetamaskProviderService
+    private metamaskProviderService: MetamaskProviderService,
+    private tokensService: TokensService
   ) {
     super();
     this.web3PublicEth = this.web3PublicService[BLOCKCHAIN_NAME.ETHEREUM];
@@ -72,9 +74,11 @@ export class EthereumPolygonBridgeProviderService extends BlockchainsBridgeProvi
     this.useTestingModeService.isTestingMode.subscribe(isTestingMode => {
       this.isTestingMode = isTestingMode;
     });
+
+    this.loadTokens().subscribe(tokens => this._tokens.next(tokens));
   }
 
-  public getTokensList(swapTokens: List<SwapToken>): Observable<List<BridgeToken>> {
+  private loadTokens(): Observable<List<BridgeToken>> {
     const query = `{
       tokenMappings(
         first: 1000, 
@@ -94,29 +98,22 @@ export class EthereumPolygonBridgeProviderService extends BlockchainsBridgeProvi
         query
       })
       .pipe(
-        switchMap(async (response: PolygonGraphResponse) => {
-          const posTokens = response.data.tokenMappings;
-          const promisesTokens = [];
-          posTokens.forEach(token =>
-            promisesTokens.push(this.parsePolygonTokens(token, swapTokens))
-          );
-          const tokens = await Promise.all(promisesTokens);
-          return List(
-            tokens.filter(
-              t =>
-                t !== null &&
-                t.blockchainToken[BLOCKCHAIN_NAME.ETHEREUM].address.toLowerCase() !==
-                  this.RBC_ADDRESS_IN_ETHEREUM.toLowerCase()
+        map((response: PolygonGraphResponse) => response.data.tokenMappings),
+        switchMap(posTokens =>
+          this.tokensService.tokens.pipe(
+            map(swapTokens =>
+              List(
+                this.filterOutRBCToken(
+                  posTokens.map(posToken => this.parsePolygonTokens(posToken, swapTokens))
+                )
+              )
             )
-          );
-        })
+          )
+        )
       );
   }
 
-  private async parsePolygonTokens(
-    token: PolygonGraphToken,
-    swapTokens: List<SwapToken>
-  ): Promise<BridgeToken> {
+  private parsePolygonTokens(token: PolygonGraphToken, swapTokens: List<SwapToken>): BridgeToken {
     const ethAddress = token.rootToken;
     let polygonAddress = token.childToken;
 
@@ -175,6 +172,15 @@ export class EthereumPolygonBridgeProviderService extends BlockchainsBridgeProvi
       console.debug('Error getting polygon tokens:', err, token.rootToken, token.childToken);
       return null;
     }
+  }
+
+  private filterOutRBCToken(tokens: BridgeToken[]) {
+    return tokens.filter(
+      t =>
+        t !== null &&
+        t.blockchainToken[BLOCKCHAIN_NAME.ETHEREUM].address.toLowerCase() !==
+          this.RBC_ADDRESS_IN_ETHEREUM.toLowerCase()
+    );
   }
 
   public getFee(): Observable<number> {

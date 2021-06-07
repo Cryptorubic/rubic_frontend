@@ -55,9 +55,11 @@ export class EthereumBinanceRubicBridgeProviderService extends BlockchainsBridge
         this.BinanceSmartContractAddress = '0x17caca02ddf472f62bfed5165facf7a6b5c72926';
       }
     });
+
+    this.loadTokens().subscribe(tokens => this._tokens.next(tokens));
   }
 
-  public getTokensList(): Observable<List<BridgeToken>> {
+  public loadTokens(): Observable<List<BridgeToken>> {
     return this.loadRubicTokenInfo().pipe(map(rubicToken => List([rubicToken])));
   }
 

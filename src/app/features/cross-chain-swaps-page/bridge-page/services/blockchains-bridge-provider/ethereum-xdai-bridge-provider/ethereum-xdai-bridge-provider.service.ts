@@ -14,6 +14,10 @@ import { BRIDGE_PROVIDER_TYPE } from '../../../models/ProviderType';
 
 @Injectable()
 export class EthereumXdaiBridgeProviderService extends BlockchainsBridgeProvider {
+  get tokens(): Observable<List<BridgeToken>> {
+    return of(List(this.xDaiProviderTokens));
+  }
+
   private xDaiProviderTokens = [
     {
       symbol: 'DAI',
@@ -52,10 +56,6 @@ export class EthereumXdaiBridgeProviderService extends BlockchainsBridgeProvider
     private bridgeApiService: BridgeApiService
   ) {
     super();
-  }
-
-  getTokensList(): Observable<List<BridgeToken>> {
-    return of(List(this.xDaiProviderTokens));
   }
 
   getFee(): Observable<number> {

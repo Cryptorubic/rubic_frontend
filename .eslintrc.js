@@ -63,7 +63,8 @@ module.exports = {
           {
             allow: ['debug', 'error', 'info']
           }
-        ]
+        ],
+        'prefer-destructuring': ['error', {'object': true, 'array': false}]
       }
     },
     {
