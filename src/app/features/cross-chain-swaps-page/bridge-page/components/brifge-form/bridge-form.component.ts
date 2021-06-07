@@ -117,7 +117,7 @@ export class BridgeFormComponent implements OnInit, OnDestroy {
     },
     [BRIDGE_PROVIDER_TYPE.EVO]: {
       img: 'Evo',
-      href: ''
+      href: 'https://evodefi.com/'
     }
   };
 

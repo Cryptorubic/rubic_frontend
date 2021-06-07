@@ -28,6 +28,7 @@ import { EthereumTronBridgeProviderService } from './services/blockchains-bridge
 import { BinanceTronBridgeProviderService } from './services/blockchains-bridge-provider/binance-tron-bridge-provider/binance-tron-bridge-provider.service';
 import { PanamaBridgeProviderService } from './services/blockchains-bridge-provider/common/panama-bridge-provider/panama-bridge-provider.service';
 import { EthereumXdaiBridgeProviderService } from './services/blockchains-bridge-provider/ethereum-xdai-bridge-provider/ethereum-xdai-bridge-provider.service';
+import { BinancePolygonBridgeProviderService } from './services/blockchains-bridge-provider/binance-polygon-bridge-provider/binance-polygon-bridge-provider.service';
 
 @NgModule({
   declarations: [
@@ -63,7 +64,8 @@ import { EthereumXdaiBridgeProviderService } from './services/blockchains-bridge
     EthereumPolygonBridgeProviderService,
     EthereumTronBridgeProviderService,
     EthereumXdaiBridgeProviderService,
-    BinanceTronBridgeProviderService
+    BinanceTronBridgeProviderService,
+    BinancePolygonBridgeProviderService
   ]
 })
 export class BridgePageModule {}
