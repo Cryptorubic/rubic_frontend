@@ -54,10 +54,12 @@ export class SwapButtonComponent implements OnInit, OnDestroy {
 
   @Input() set isBridgeNotSupported(value: boolean) {
     this.errorType[ERROR_TYPE.NOT_SUPPORTED_BRIDGE] = value;
+    this.setErrorText();
   }
 
   @Input() set isTronAddressNotSet(value: boolean) {
     this.errorType[ERROR_TYPE.TRON_WALLET_ADDRESS] = value;
+    this.setErrorText();
   }
 
   @Output() approveClick = new EventEmitter<void>();
@@ -86,6 +88,8 @@ export class SwapButtonComponent implements OnInit, OnDestroy {
 
   private _fromAmount: BigNumber;
 
+  public errorText: string;
+
   private useTestingModeSubscription$: Subscription;
 
   private formServiceSubscription$: Subscription;
@@ -94,24 +98,6 @@ export class SwapButtonComponent implements OnInit, OnDestroy {
 
   get hasError(): boolean {
     return !!Object.values(ERROR_TYPE).find(key => this.errorType[key]);
-  }
-
-  // eslint-disable-next-line consistent-return
-  get errorText(): string {
-    if (this.errorType[ERROR_TYPE.NOT_SUPPORTED_BRIDGE]) {
-      return this.translateService.instant('errors.chooseSupportedBridge');
-    }
-    if (this.errorType[ERROR_TYPE.INSUFFICIENT_FUNDS]) {
-      return this.translateService.instant('errors.InsufficientBalance');
-    }
-    if (this.errorType[ERROR_TYPE.TRON_WALLET_ADDRESS]) {
-      return this.translateService.instant('errors.setTronAddress');
-    }
-    if (this.errorType[ERROR_TYPE.WRONG_BLOCKCHAIN]) {
-      return this.translateService.instant('errors.chooseNetworkWallet', {
-        blockchain: this.fromToken.blockchain
-      });
-    }
   }
 
   constructor(
@@ -128,8 +114,6 @@ export class SwapButtonComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.needApprove = false;
     this.needLogin = this.authService.getCurrentUser().pipe(map(user => !user?.address));
-
-    this.loading = true;
 
     this.useTestingModeSubscription$ = this.useTestingModeService.isTestingMode.subscribe(
       isTestingMode => {
@@ -156,8 +140,14 @@ export class SwapButtonComponent implements OnInit, OnDestroy {
   }
 
   private setFormValues(form: ISwapFormInput): void {
+    this.loading = true;
+    this.cdr.detectChanges();
+
     this.fromToken = form.fromToken;
     this.checkErrors();
+
+    this.loading = false;
+    this.cdr.detectChanges();
   }
 
   private checkErrors(): void {
@@ -168,14 +158,12 @@ export class SwapButtonComponent implements OnInit, OnDestroy {
   private checkInsufficientFundsError(): void {
     if (!this._fromAmount || !this.fromToken) {
       this.errorType[ERROR_TYPE.INSUFFICIENT_FUNDS] = false;
-      this.loading = false;
-      this.cdr.detectChanges();
       return;
     }
 
     this.errorType[ERROR_TYPE.INSUFFICIENT_FUNDS] = this.fromToken.amount.lt(this._fromAmount);
 
-    this.loading = false;
+    this.setErrorText();
     this.cdr.detectChanges();
   }
 
@@ -189,7 +177,22 @@ export class SwapButtonComponent implements OnInit, OnDestroy {
       fromBlockchain !== userBlockchain &&
       (!this.isTestingMode || `${fromBlockchain}_TESTNET` !== userBlockchain);
 
+    this.setErrorText();
     this.cdr.detectChanges();
+  }
+
+  private setErrorText(): void {
+    if (this.errorType[ERROR_TYPE.NOT_SUPPORTED_BRIDGE]) {
+      this.errorText = this.translateService.instant('errors.chooseSupportedBridge');
+    } else if (this.errorType[ERROR_TYPE.INSUFFICIENT_FUNDS]) {
+      this.errorText = this.translateService.instant('errors.InsufficientBalance');
+    } else if (this.errorType[ERROR_TYPE.TRON_WALLET_ADDRESS]) {
+      this.errorText = this.translateService.instant('errors.setTronAddress');
+    } else if (this.errorType[ERROR_TYPE.WRONG_BLOCKCHAIN]) {
+      this.errorText = this.translateService.instant('errors.chooseNetworkWallet', {
+        blockchain: this.fromToken.blockchain
+      });
+    }
   }
 
   public onLogin() {
