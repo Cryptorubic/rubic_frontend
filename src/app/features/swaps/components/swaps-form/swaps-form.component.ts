@@ -215,23 +215,14 @@ export class SwapsFormComponent implements OnInit, OnDestroy {
   }
 
   private updateSelectedToken(tokenType: 'from' | 'to'): void {
-    if (!this.selectedToken[tokenType]) {
+    const formValue = this.swapFormService.commonTrade.controls.input.value;
+    const token =
+      this.selectedToken[tokenType] ||
+      (tokenType === 'from' ? formValue.fromToken : formValue.toToken);
+    if (!token) {
       return;
     }
-
-    const token = this.selectedToken[tokenType];
-    const supportedTokenWithBalance = this._supportedTokens[token.blockchain][
-      token.blockchain
-    ].find(supportedToken => supportedToken.address.toLowerCase() === token.address.toLowerCase());
-
-    if (supportedTokenWithBalance) {
-      this.selectedToken[tokenType] = supportedTokenWithBalance;
-
-      const formKey = tokenType === 'from' ? 'fromToken' : 'toToken';
-      this.swapFormService.commonTrade.controls.input.patchValue({
-        [formKey]: this.selectedToken[tokenType]
-      });
-    }
+    this.setTokenWithBalance(tokenType, token);
   }
 
   private setNewSelectedToken(tokenType: 'from' | 'to', token: TokenAmount): void {
@@ -239,8 +230,22 @@ export class SwapsFormComponent implements OnInit, OnDestroy {
       this.selectedToken[tokenType] = token;
       return;
     }
+    this.setTokenWithBalance(tokenType, token);
+  }
 
-    this.selectedToken[tokenType] = token;
+  private setTokenWithBalance(tokenType: 'from' | 'to', token: TokenAmount): void {
+    const supportedTokenWithBalance = this._supportedTokens[token.blockchain][
+      token.blockchain
+    ].find(supportedToken => supportedToken.address.toLowerCase() === token.address.toLowerCase());
+
+    if (supportedTokenWithBalance && this.selectedToken[tokenType] !== supportedTokenWithBalance) {
+      this.selectedToken[tokenType] = supportedTokenWithBalance;
+
+      const formKey = tokenType === 'from' ? 'fromToken' : 'toToken';
+      this.swapFormService.commonTrade.controls.input.patchValue({
+        [formKey]: this.selectedToken[tokenType]
+      });
+    }
   }
 
   public getMinMaxAmounts(amountType: 'minAmount' | 'maxAmount'): number {
