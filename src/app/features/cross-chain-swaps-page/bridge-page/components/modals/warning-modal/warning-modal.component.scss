@@ -3,25 +3,12 @@
 .high-gas-price-modal {
   max-width: 311px;
   margin: 0 auto;
-  padding-top: 40px;
+  padding: 40px;
 
   &__description {
     margin: 0;
 
     font-size: 16px;
     line-height: 23px;
-  }
-
-  &__buttons {
-    margin-top: 30px;
-  }
-}
-
-.buttons {
-  display: flex;
-  justify-content: space-between;
-
-  app-primary-button {
-    width: 120px;
   }
 }

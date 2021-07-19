@@ -4,6 +4,7 @@ import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
 import { CookieService } from 'ngx-cookie-service';
 import { RouterModule } from '@angular/router';
 import { HttpClient, HTTP_INTERCEPTORS } from '@angular/common/http';
+import { WarningModalComponent } from 'src/app/features/cross-chain-swaps-page/bridge-page/components/modals/warning-modal/warning-modal.component';
 import { MaintenanceComponent } from './header/components/maintenance/maintenance.component';
 import { HeaderComponent } from './header/components/header/header.component';
 import { HeaderModule } from './header/header.module';
@@ -29,7 +30,7 @@ import { WalletsModalComponent } from './header/components/header/components/wal
       multi: true
     }
   ],
-  entryComponents: [WalletsModalComponent],
+  entryComponents: [WalletsModalComponent, WarningModalComponent],
   imports: [
     CommonModule,
     HeaderModule,

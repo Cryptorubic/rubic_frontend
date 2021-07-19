@@ -1,15 +1,3 @@
-<app-modal (onCloseEvent)="onCancel.emit()">
-  <div class="high-gas-price-modal">
-    <p class="high-gas-price-modal__description" [innerHTML]="warningText"></p>
-
-    <div class="high-gas-price-modal__buttons buttons">
-      <app-primary-button
-        label="Cancel"
-        backgroundColor="grey"
-        (onClick)="onCancel.emit()"
-      ></app-primary-button>
-
-      <app-primary-button label="Confirm" (onClick)="onConfirm.emit()"></app-primary-button>
-    </div>
-  </div>
-</app-modal>
+<div class="high-gas-price-modal">
+  <p class="high-gas-price-modal__description" [innerHTML]="warningText"></p>
+</div>

@@ -1,4 +1,5 @@
-import { Component, Output, EventEmitter, Input } from '@angular/core';
+import { Component, Output, EventEmitter, Input, Inject } from '@angular/core';
+import { MAT_DIALOG_DATA } from '@angular/material/dialog';
 
 @Component({
   selector: 'warning-modal',
@@ -8,9 +9,7 @@ import { Component, Output, EventEmitter, Input } from '@angular/core';
 export class WarningModalComponent {
   @Input() warningText: string;
 
-  @Output() onConfirm = new EventEmitter();
-
-  @Output() onCancel = new EventEmitter();
-
-  constructor() {}
+  constructor(@Inject(MAT_DIALOG_DATA) public data: { text: string }) {
+    this.warningText = data.text;
+  }
 }
